@@ -4,10 +4,17 @@ from app.api.v1.routes.auth import router as auth_router
 
 from app.api.v1.routes.admin import router as admin_router
 
+from app.api.v1.routes.products import router as products_router
+
 app = FastAPI(
     title="OrderFlow API",
     description="Distributed Order Processing Backend",
     version="1.0.0",
+)
+
+app.include_router(
+    products_router,
+    prefix="/api/v1",
 )
 
 app.include_router(
