@@ -12,6 +12,8 @@ from app.models.user import User
 from app.models.product import Product
 from app.models.inventory import Inventory
 
+from app.models.cart import Cart, CartItem
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
