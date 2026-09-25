@@ -8,6 +8,9 @@ from app.models.product import Product
 from app.models.user import User
 from app.schemas.product import ProductCreate, ProductResponse
 
+import json
+from app.core.redis import redis_client
+
 
 router = APIRouter(
     prefix="/products",
@@ -46,6 +49,8 @@ def create_product(
     db.commit()
     db.refresh(product)
 
+    redis_client.delete("products:list")
+
     return product
 
 
@@ -56,13 +61,36 @@ def create_product(
 def list_products(
     db: Session = Depends(get_db),
 ):
+    cached_products = redis_client.get("products:list")
+
+    if cached_products:
+        return json.loads(cached_products)
+
     products = db.scalars(
         select(Product)
         .where(Product.is_active == True)
         .order_by(Product.id)
     ).all()
 
-    return products
+    products_data = [
+        {
+            "id": product.id,
+            "name": product.name,
+            "description": product.description,
+            "sku": product.sku,
+            "price": str(product.price),
+            "is_active": product.is_active,
+        }
+        for product in products
+    ]
+
+    redis_client.set(
+        "products:list",
+        json.dumps(products_data),
+        ex=60,
+    )
+
+    return products_data
 
 
 @router.get(
