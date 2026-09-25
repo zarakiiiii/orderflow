@@ -71,3 +71,20 @@ def decode_access_token(token: str) -> dict:
 
     except JWTError:
         raise ValueError("Invalid or expired token")
+    
+
+def get_user_id_from_token(token: str) -> int:
+    """Extract the user ID from a JWT."""
+
+    try:
+        payload = decode_access_token(token)
+
+        user_id = payload.get("sub")
+
+        if user_id is None:
+            raise ValueError("Invalid token")
+
+        return int(user_id)
+
+    except (ValueError, TypeError):
+        raise ValueError("Invalid token")
