@@ -12,7 +12,8 @@ from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.user import User
 from app.schemas.order import OrderResponse
-
+from fastapi import Header
+from app.models.idempotency import IdempotencyKey
 
 router = APIRouter(
     prefix="/orders",
@@ -26,9 +27,50 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
 )
 def checkout(
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    existing_key = db.scalar(
+        select(IdempotencyKey).where(
+            IdempotencyKey.key == idempotency_key,
+            IdempotencyKey.user_id == current_user.id,
+        )
+    )
+
+    if existing_key:
+        if existing_key.order_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Checkout is already being processed",
+            )
+
+        existing_order = db.get(
+            Order,
+            existing_key.order_id,
+        )
+
+        if existing_order is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Idempotency record is inconsistent",
+            )
+
+        existing_items = db.scalars(
+            select(OrderItem)
+            .where(
+                OrderItem.order_id == existing_order.id
+            )
+            .order_by(OrderItem.id)
+        ).all()
+
+        return {
+            "id": existing_order.id,
+            "status": existing_order.status,
+            "total_amount": existing_order.total_amount,
+            "items": existing_items,
+        }
+    
     # Find the user's cart
     cart = db.scalar(
         select(Cart).where(
@@ -114,6 +156,16 @@ def checkout(
 
         db.add(order)
         db.flush()
+
+        idempotency_record = IdempotencyKey(
+        key=idempotency_key,
+        user_id=current_user.id,
+        order_id=order.id,
+        )
+
+        db.add(idempotency_record)
+
+        
 
         # Create order items and deduct inventory
         for item_data in order_items_data:
