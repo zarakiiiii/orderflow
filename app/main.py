@@ -10,11 +10,15 @@ from app.api.v1.routes.inventory import router as inventory_router
 
 from app.api.v1.routes.cart import router as cart_router
 
+from app.api.v1.routes.orders import router as orders_router
+
 app = FastAPI(
     title="OrderFlow API",
     description="Distributed Order Processing Backend",
     version="1.0.0",
 )
+
+app.include_router(orders_router, prefix="/api/v1")
 
 app.include_router(
     cart_router,
