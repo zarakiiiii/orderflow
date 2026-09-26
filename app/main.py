@@ -24,11 +24,15 @@ app = FastAPI(
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    check_rate_limit(request)
+    rate_limit_response = check_rate_limit(request)
+
+    if rate_limit_response:
+        return rate_limit_response
 
     response = await call_next(request)
 
     return response
+    
 
 app.include_router(orders_router, prefix="/api/v1")
 

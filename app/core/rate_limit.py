@@ -1,6 +1,7 @@
 import time
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 from app.core.redis import redis_client
 
@@ -22,7 +23,11 @@ def check_rate_limit(request: Request):
         redis_client.expire(key, WINDOW_SECONDS)
 
     if request_count > RATE_LIMIT:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded",
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": "Rate limit exceeded",
+            },
         )
+
+    return None
