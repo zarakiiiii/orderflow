@@ -3,6 +3,12 @@ from redis.exceptions import ResponseError
 from app.core.queue import ORDER_EVENTS_STREAM
 from app.core.redis import redis_client
 
+import logging
+from app.core.logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
 
 CONSUMER_GROUP = "order_workers"
 CONSUMER_NAME = "worker-1"
@@ -17,7 +23,7 @@ def create_consumer_group():
             mkstream=True,
         )
 
-        print(f"Created consumer group: {CONSUMER_GROUP}")
+        logger.info("Created consumer group: %s", CONSUMER_GROUP)
 
     except ResponseError as exc:
         if "BUSYGROUP" not in str(exc):
@@ -28,19 +34,19 @@ def process_event(message_id, data):
     event_type = data.get("event")
 
     if event_type == "order.created":
-        print(
-            f"Processing order.created | "
-            f"order_id={data.get('order_id')} | "
-            f"user_id={data.get('user_id')}"
-        )
+        logger.info(
+    "Processing order.created | order_id=%s | user_id=%s",
+    data.get("order_id"),
+    data.get("user_id"),
+)
     else:
-        print(f"Unknown event: {event_type}")
+        logger.warning("Unknown event: %s", event_type)
 
 
 def main():
     create_consumer_group()
 
-    print("Order worker started...")
+    logger.info("Order worker started")
 
     while True:
         messages = redis_client.xreadgroup(
@@ -69,10 +75,10 @@ def main():
                     )
 
                 except Exception as exc:
-                    print(
-                        f"Failed to process "
-                        f"{message_id}: {exc}"
-                    )
+                    logger.exception(
+    "Failed to process message %s",
+    message_id,
+)
 
 
 if __name__ == "__main__":

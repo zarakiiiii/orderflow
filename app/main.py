@@ -15,12 +15,30 @@ from app.api.v1.routes.orders import router as orders_router
 from fastapi import Request
 from app.core.rate_limit import check_rate_limit
 
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from app.core.logging_config import setup_logging
+
 
 app = FastAPI(
     title="OrderFlow API",
     description="Distributed Order Processing Backend",
     version="1.0.0",
 )
+
+setup_logging()
+
+@app.exception_handler(Exception)
+async def global_exception_handler(
+    request: Request,
+    exc: Exception,
+):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+        },
+    )
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
