@@ -14,6 +14,7 @@ from app.models.user import User
 from app.schemas.order import OrderResponse
 from fastapi import Header
 from app.models.idempotency import IdempotencyKey
+from app.core.queue import publish_order_created
 
 router = APIRouter(
     prefix="/orders",
@@ -187,10 +188,15 @@ def checkout(
         db.commit()
 
         # Load the order items before returning
+        publish_order_created(
+        order_id=order.id,
+        user_id=current_user.id,
+        )
+
         order_items = db.scalars(
-            select(OrderItem)
-            .where(OrderItem.order_id == order.id)
-            .order_by(OrderItem.id)
+        select(OrderItem)
+        .where(OrderItem.order_id == order.id)
+        .order_by(OrderItem.id)
         ).all()
 
         return {
